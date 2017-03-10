@@ -92,6 +92,15 @@ int pixMap_write_bmp16(pixMap *p,char *filename){
 }	 
 void plugin_destroy(plugin **plug){
  //free the allocated memory and set *plug to zero (NULL)
+ if(!plug || !*plug) return; //check for edge case of p or *p =0 to avoid segfault
+ plugin *this_plug = *plug; 
+ this_plug = malloc(sizeof(plugin));
+ this_plug->data = malloc(sizeof(void));
+ if(this_plug->data) free(this_plug->data);
+ if(this_plug->function) free(this_plug->function);
+ 
+ free(this_plug);
+ this_plug = 0;
 }
 
 plugin *plugin_parse(char *argv[] ,int *iptr){
@@ -117,9 +126,10 @@ plugin *plugin_parse(char *argv[] ,int *iptr){
 		//code goes here	
 		new->function = convolution;
 		new->data = malloc (3*3*sizeof(int));
+		int* kernel = (int*) new->data;
 		
 		for(int j =0; j < 9; j++) {
-			(int*) new->data[j] = atoi(argv[i + 1 + j];
+			kernel[j] = atoi(argv[i + 1 + j]);
 		}
 		*iptr=i+10;	
 		return new;
@@ -164,19 +174,46 @@ static void rotate(pixMap *p, pixMap *oldPixMap,int i, int j,void *data){
 static void convolution(pixMap *p, pixMap *oldPixMap,int i, int j,void *data){
 	//implement algorithm givne in https://en.wikipedia.org/wiki/Kernel_(image_processing)
 	//assume that the kernel is a 3x3 matrix of integers
-	//don't forget to normalize by dividing by the sum of all the elements in the matrix
-	int kX, kY;
-	if(p != NULL) {
-		for(int nR = 0; nR < p->imageWidth; nR++) {
-			for(int nC = 0; nC < p->imageHeight; nC++) {
-				p->image[nR][nC] = 0.0;
-				for(kX = -i; kX <= i; kX++) {
-					for(kY = -j; kY <= j; kY++) {
-						//???
-					}
+	//don't forget to normalize by dividing by the sum of all the elements in the matrix	
+	float sumR = 0;
+	float sumG = 0;
+	float sumB = 0;
+	int sum = 0;
+	int kernelL = 0;
+	int* kernelD = (int*) data;
+	
+	for(int y = i - 1; y <= i + 1; y++) {
+		for(int x = j - 1; x <= j + 1; x++) {
+			int x1 = x;
+			int y1 = y;
+			
+			//Check if it's legal
+			if(x1 < 0) {
+				x1 = 0;
+			} else if (x1 > p->imageWidth - 1) {
+				x1 = p->imageWidth - 1;
 			}
+			
+			if(y1 < 0) {
+				y1 = 0;
+			} else if (y1 > p->imageHeight - 1) {
+				y1 = p->imageHeight - 1;
+			}
+		
+			sumR += kernelD[kernelL] * p->pixArray_overlay[y1][x1].r;
+			sumG += kernelD[kernelL] * p->pixArray_overlay[y1][x1].g;
+			sumB += kernelD[kernelL] * p->pixArray_overlay[y1][x1].b;
+			
+			sum += kernelD[kernelL];
+			kernelL++;
 		}
 	}
+	
+	if(sum == 0) sum = 1;
+	
+	p->pixArray_overlay[i][j].r = sumR / sum;
+	p->pixArray_overlay[i][j].g = sumG / sum;
+	p->pixArray_overlay[i][j].b = sumB / sum;
 }
 
 //very simple functions - does not use the data pointer - good place to start
