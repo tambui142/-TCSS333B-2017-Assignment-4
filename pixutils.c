@@ -81,7 +81,21 @@ int pixMap_write_bmp16(pixMap *p,char *filename){
 
 	//bmp16->pixArray[i][j] is 2-d array for bmp files. It is analogous 
 	//to the one for our png file pixMaps except that it is 16 bits
+	char Bbits = 5;
+	char Gbits = 6;
+	char Rbits = 5;
+	char Abits = 0;
 	
+	for (int y = 0; y < p->imageHeight; y++) {
+      for (int x = 0; x < p->imageWidth; x++) {
+		  uint16_t bmp16Pix = 0;
+		  bmp16Pix = p->pixArray_overlay[p->imageHeight - 1 - y][x].b >> (8-Bbits);
+		  bmp16Pix |= p->pixArray_overlay[p->imageHeight - 1 - y][x].g >> (8-Gbits) << Bbits;
+		  bmp16Pix |= (p->pixArray_overlay[p->imageHeight - 1 - y][x].r >> (8-Rbits)) << (Bbits+Gbits);
+		  bmp16Pix |= (p->pixArray_overlay[p->imageHeight - 1 - y][x].a >> (8-Abits)) << (Bbits+Gbits+Rbits);
+		  bmp16->pixArray[y][x]=bmp16Pix;
+      }
+   }
 	
  //However pixMap and BMP16_map are "upside down" relative to each other
  //need to flip one of the the row indices when copying
@@ -92,12 +106,12 @@ int pixMap_write_bmp16(pixMap *p,char *filename){
 }	 
 void plugin_destroy(plugin **plug){
  //free the allocated memory and set *plug to zero (NULL)
- if(!plug || !*plug) return; //check for edge case of p or *p =0 to avoid segfault
+ if(!plug || !*plug) return; 
  plugin *this_plug = *plug; 
  this_plug = malloc(sizeof(plugin));
  this_plug->data = malloc(sizeof(void));
  if(this_plug->data) free(this_plug->data);
- if(this_plug->function) free(this_plug->function);
+ if(this_plug->function) free(this_plug->function); //don't know if it's needed?
  
  free(this_plug);
  this_plug = 0;
